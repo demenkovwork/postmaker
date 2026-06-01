@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CardSlide, CoverSlide, Slide } from "@/lib/types";
 import { BADGE_PRESETS } from "@/lib/presets";
 
@@ -25,6 +25,27 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function getImageFromClipboard(data: DataTransfer | null): File | null {
+  if (!data) return null;
+  for (const item of data.items) {
+    if (item.type.startsWith("image/")) {
+      return item.getAsFile();
+    }
+  }
+  return null;
+}
+
+function isTextInputTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  return (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement ||
+    el.isContentEditable
+  );
+}
+
 export default function ControlPanel({
   projectName,
   onProjectNameChange,
@@ -42,6 +63,24 @@ export default function ControlPanel({
     },
     [onChange]
   );
+
+  // Paste screenshot with ⌘V / Ctrl+V when editing a card (not in text fields).
+  useEffect(() => {
+    if (slide.type !== "card") return;
+
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTextInputTarget(e.target)) return;
+
+      const file = getImageFromClipboard(e.clipboardData);
+      if (!file) return;
+
+      e.preventDefault();
+      void handleFile(file);
+    };
+
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [slide.type, handleFile]);
 
   return (
     <div>
@@ -179,15 +218,21 @@ function CardFields({
           setDragOver(false);
           handleFile(e.dataTransfer.files?.[0]);
         }}
-        className={`flex cursor-pointer items-center justify-center rounded-[10px] border border-dashed px-3 py-6 text-center text-[13px] transition-colors ${
+        onPaste={(e) => {
+          const file = getImageFromClipboard(e.clipboardData);
+          if (!file) return;
+          e.preventDefault();
+          handleFile(file);
+        }}
+        className={`flex cursor-pointer items-center justify-center rounded-[10px] border border-dashed px-3 py-6 text-center text-[13px] transition-colors outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 ${
           dragOver
             ? "border-brand bg-brand/10 text-brand"
             : "border-border bg-card text-muted"
         }`}
       >
         {slide.screenshot
-          ? "Screenshot loaded — click or drop to replace"
-          : "Click to upload or drag & drop a competitor screenshot"}
+          ? "Screenshot loaded — click, drop, or ⌘V to replace"
+          : "Click to upload, drag & drop, or paste with ⌘V / Ctrl+V"}
       </div>
       <input
         ref={fileInputRef}
