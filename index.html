@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>compeye studio — card & cover builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:#0c0c0e;color:#e4e4e7;font-family:'Space Grotesk',sans-serif;
+    display:flex;min-height:100vh;
+  }
+  /* ---------- left: controls ---------- */
+  .panel{
+    width:420px;flex-shrink:0;padding:28px;border-right:1px solid #27272a;
+    overflow-y:auto;height:100vh;
+  }
+  .panel h1{font-size:20px;margin-bottom:4px;}
+  .panel .sub{color:#71717a;font-size:13px;margin-bottom:24px;}
+  .tabs{display:flex;gap:8px;margin-bottom:24px;}
+  .tabs button{
+    flex:1;padding:10px;border:1px solid #27272a;background:#18181b;color:#a1a1aa;
+    border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;
+  }
+  .tabs button.active{background:#22c55e;color:#06140a;border-color:#22c55e;}
+  label{display:block;font-size:12px;color:#a1a1aa;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.05em;}
+  input,textarea,select{
+    width:100%;padding:11px 13px;background:#18181b;border:1px solid #27272a;
+    border-radius:10px;color:#fafafa;font-family:'JetBrains Mono',monospace;font-size:14px;resize:vertical;
+  }
+  textarea{min-height:110px;line-height:1.5;}
+  input[type=color]{padding:4px;height:44px;}
+  input[type=file]{padding:9px;font-family:inherit;}
+  .row{display:flex;gap:10px;}
+  .row>*{flex:1;}
+  .dl{
+    margin-top:28px;width:100%;padding:14px;background:#22c55e;color:#06140a;border:none;
+    border-radius:12px;font-family:inherit;font-weight:700;font-size:15px;cursor:pointer;
+  }
+  .dl:hover{filter:brightness(1.08);}
+  .hint{color:#52525b;font-size:11px;margin-top:8px;line-height:1.5;}
+
+  /* ---------- right: preview ---------- */
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;padding:40px;overflow:auto;}
+  .scaler{transform:scale(.46);transform-origin:center;}
+
+  /* ============ CARD (1080x1350) ============ */
+  .card{
+    width:1080px;height:1350px;background:#18181B;position:relative;overflow:hidden;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .card .stars{
+    position:absolute;inset:0;
+    background-image:
+      radial-gradient(1px 1px at 20% 15%,rgba(255,255,255,.25),transparent),
+      radial-gradient(1px 1px at 70% 8%,rgba(255,255,255,.18),transparent),
+      radial-gradient(1.5px 1.5px at 85% 35%,rgba(255,255,255,.2),transparent),
+      radial-gradient(1px 1px at 40% 50%,rgba(255,255,255,.12),transparent),
+      radial-gradient(1px 1px at 10% 70%,rgba(255,255,255,.15),transparent),
+      radial-gradient(1.5px 1.5px at 90% 80%,rgba(255,255,255,.18),transparent),
+      radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.12),transparent);
+  }
+  .card .glow{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(120% 90% at 15% 65%,rgba(120,70,40,.22),transparent 55%),
+      radial-gradient(80% 60% at 90% 20%,rgba(40,60,90,.15),transparent 60%);
+  }
+  .card .wrap{position:relative;padding:70px 64px;height:100%;display:flex;flex-direction:column;}
+  .card .shot{position:relative;background:#fff;border-radius:28px;padding:14px;
+    box-shadow:0 30px 80px rgba(0,0,0,.5);margin-bottom:56px;}
+  .card .shot img{width:100%;display:block;border-radius:16px;}
+  .card .shot .ph{width:100%;height:520px;border-radius:16px;
+    background:linear-gradient(135deg,#1e2a3a,#0f1620);display:flex;align-items:center;
+    justify-content:center;color:#5b7089;font-size:26px;}
+  .card .badge{position:absolute;top:-24px;right:40px;background:#18181B;color:#fff;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:38px;padding:18px 30px;
+    border-radius:18px;box-shadow:0 12px 30px rgba(0,0,0,.55);display:flex;align-items:center;
+    gap:12px;border:1px solid rgba(255,255,255,.08);white-space:nowrap;}
+  .card .badge .dot{width:14px;height:14px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px #22c55e;}
+  .card .link{font-size:44px;font-weight:700;line-height:1.18;word-break:break-word;margin-bottom:38px;}
+  .card .desc{color:#f4f4f5;font-size:40px;line-height:1.5;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+  .card .foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;
+    padding-top:40px;color:#a1a1aa;font-size:30px;}
+  .card .brand{display:flex;align-items:center;gap:14px;font-weight:700;color:#e4e4e7;
+    font-family:'Space Grotesk',sans-serif;}
+  .card .brand .eye{width:40px;height:40px;border-radius:50%;border:3px solid #22c55e;
+    display:flex;align-items:center;justify-content:center;}
+  .card .brand .eye::after{content:'';width:14px;height:14px;border-radius:50%;background:#22c55e;}
+
+  /* ============ COVER (1080x1350) ============ */
+  .cover{width:1080px;height:1350px;background:#18181B;position:relative;overflow:hidden;display:none;}
+  .cover .stars{position:absolute;inset:0;background-image:
+      radial-gradient(1.5px 1.5px at 25% 20%,rgba(255,255,255,.3),transparent),
+      radial-gradient(1px 1px at 75% 30%,rgba(255,255,255,.2),transparent),
+      radial-gradient(2px 2px at 60% 70%,rgba(255,255,255,.25),transparent),
+      radial-gradient(1px 1px at 15% 80%,rgba(255,255,255,.18),transparent);}
+  .cover .glow{position:absolute;inset:0;background:
+      radial-gradient(90% 70% at 50% 35%,rgba(34,197,94,.15),transparent 60%);}
+  .cover .cwrap{position:relative;height:100%;display:flex;flex-direction:column;
+    justify-content:center;padding:90px 80px;}
+  .cover .eyebig{width:120px;height:120px;border-radius:50%;border:8px solid #22c55e;
+    display:flex;align-items:center;justify-content:center;margin-bottom:50px;
+    box-shadow:0 0 40px rgba(34,197,94,.4);}
+  .cover .eyebig::after{content:'';width:42px;height:42px;border-radius:50%;background:#22c55e;}
+  .cover .ctitle{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:96px;
+    line-height:1.05;color:#fff;margin-bottom:36px;}
+  .cover .ctitle .hl{color:#22c55e;}
+  .cover .csub{font-family:'JetBrains Mono',monospace;font-size:40px;line-height:1.45;color:#a1a1aa;}
+  .cover .ctag{position:absolute;bottom:80px;left:80px;font-family:'JetBrains Mono',monospace;
+    font-size:34px;color:#71717a;display:flex;align-items:center;gap:14px;}
+</style>
+</head>
+<body>
+  <div class="panel">
+    <h1>compeye studio</h1>
+    <div class="sub">card & cover builder · 1080×1350</div>
+    <div class="tabs">
+      <button id="tabCard" class="active" onclick="setMode('card')">Card</button>
+      <button id="tabCover" onclick="setMode('cover')">Cover</button>
+    </div>
+
+    <!-- CARD controls -->
+    <div id="ctrlCard">
+      <label>Badge text</label>
+      <input id="iBadge" value="🔥 Trending on Reddit">
+      <label>Link / headline (accent color)</label>
+      <input id="iLink" value="linear.app · raises $82M Series C">
+      <label>Description</label>
+      <textarea id="iDesc">Linear just closed an $82M round led by Accel. Spotted across Reddit & HN before any press release. Their hiring page added 14 new roles this week — mostly enterprise sales.</textarea>
+      <label>Footer right text</label>
+      <input id="iSave" value="Save this post 🔖">
+      <div class="row">
+        <div><label>Accent color</label><input type="color" id="iAccent" value="#ff3b5c"></div>
+        <div><label>Brand handle</label><input id="iBrand" value="compeye.app"></div>
+      </div>
+      <label>Screenshot (upload)</label>
+      <input type="file" id="iShot" accept="image/*">
+      <div class="hint">Drop a screenshot of a competitor's site, post, or App Store listing.</div>
+    </div>
+
+    <!-- COVER controls -->
+    <div id="ctrlCover" style="display:none">
+      <label>Title (use * around words to highlight)</label>
+      <textarea id="iCTitle">Who's *winning* the SaaS race?</textarea>
+      <label>Subtitle</label>
+      <textarea id="iCSub">New launches & competitor moves, spotted before the press release.</textarea>
+      <label>Bottom tag</label>
+      <input id="iCTag">
+    </div>
+
+    <button class="dl" onclick="download()">⬇ Download PNG</button>
+    <div class="hint">Exports at 2× (2160×2700). Fonts load from Google Fonts — wait a second after opening before downloading.</div>
+  </div>
+
+  <div class="stage">
+    <div class="scaler">
+      <!-- CARD -->
+      <div class="card" id="card">
+        <div class="stars"></div><div class="glow"></div>
+        <div class="wrap">
+          <div class="shot">
+            <div class="badge" id="vBadge"><span class="dot"></span>🔥 Trending on Reddit</div>
+            <div class="ph" id="vShot">your competitor screenshot here</div>
+          </div>
+          <div class="link" id="vLink"></div>
+          <div class="desc" id="vDesc"></div>
+          <div class="foot">
+            <div class="brand"><span class="eye"></span><span id="vBrand">compeye.app</span></div>
+            <div id="vSave"></div>
+          </div>
+        </div>
+      </div>
+      <!-- COVER -->
+      <div class="cover" id="cover">
+        <div class="stars"></div><div class="glow"></div>
+        <div class="cwrap">
+          <div class="eyebig"></div>
+          <div class="ctitle" id="vCTitle"></div>
+          <div class="csub" id="vCSub"></div>
+        </div>
+        <div class="ctag"><span class="dot" style="width:16px;height:16px;border-radius:50%;background:#22c55e;display:inline-block;"></span><span id="vCTag">compeye.app</span></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let mode='card';
+function setMode(m){
+  mode=m;
+  document.getElementById('card').style.display = m==='card'?'block':'none';
+  document.getElementById('cover').style.display = m==='cover'?'block':'none';
+  document.getElementById('ctrlCard').style.display = m==='card'?'block':'none';
+  document.getElementById('ctrlCover').style.display = m==='cover'?'block':'none';
+  document.getElementById('tabCard').classList.toggle('active',m==='card');
+  document.getElementById('tabCover').classList.toggle('active',m==='cover');
+}
+function hl(t){return t.replace(/\*(.+?)\*/g,'<span class="hl">$1</span>');}
+function sync(){
+  // card
+  document.getElementById('vBadge').innerHTML='<span class="dot"></span>'+iBadge.value;
+  const link=document.getElementById('vLink');
+  link.textContent=iLink.value; link.style.color=iAccent.value;
+  document.getElementById('vDesc').textContent=iDesc.value;
+  document.getElementById('vBrand').textContent=iBrand.value;
+  document.getElementById('vSave').textContent=iSave.value;
+  // cover
+  document.getElementById('vCTitle').innerHTML=hl(iCTitle.value);
+  document.getElementById('vCSub').textContent=iCSub.value;
+  document.getElementById('vCTag').textContent=iCTag.value||iBrand.value;
+}
+['iBadge','iLink','iDesc','iSave','iAccent','iBrand','iCTitle','iCSub','iCTag']
+  .forEach(id=>document.getElementById(id).addEventListener('input',sync));
+
+document.getElementById('iShot').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    document.getElementById('vShot').outerHTML='<img id="vShot" src="'+ev.target.result+'">';
+  };
+  r.readAsDataURL(f);
+});
+
+async function download(){
+  const el=document.getElementById(mode==='card'?'card':'cover');
+  const canvas=await html2canvas(el,{scale:2,backgroundColor:null,useCORS:true,width:1080,height:1350});
+  const a=document.createElement('a');
+  a.download='compeye_'+mode+'_'+Date.now()+'.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+}
+sync();
+</script>
+</body>
+</html>
